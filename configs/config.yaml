@@ -1,0 +1,27 @@
+server:
+  port: "8080"
+  mode: "debug" # debug, release, test
+
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "auth_center"
+  max_pool_size: 100
+  min_pool_size: 10
+  timeout: "30s"
+
+jwt:
+  secret: "your-super-secret-jwt-key-change-this-in-production"
+  access_token_expire: "15m"
+  refresh_token_expire: "168h" # 7天
+  issuer: "AuthCenter"
+
+security:
+  max_login_attempts: 5
+  lockout_duration: "30m"
+  password_min_length: 8
+  session_cleanup_interval: "1h" # 清理过期会话的间隔
+
+performance:
+  enable_text_search: true # 启用全文搜索
+  cache_user_permissions: true # 在JWT中缓存用户权限
+  max_query_time: "30s" # 最大查询时间

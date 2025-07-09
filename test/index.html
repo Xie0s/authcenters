@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuthCenter API 测试</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .response {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .nav-link {
+            cursor: pointer;
+        }
+        #tokenInfo {
+            font-size: 12px;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">AuthCenter API 测试工具</h1>
+        
+        <div class="alert alert-success" role="alert" id="tokenStatus" style="display: none;">
+            已登录 <span id="tokenInfo"></span>
+            <button class="btn btn-sm btn-outline-danger float-end" onclick="logout()">登出</button>
+        </div>
+        
+        <!-- 调试信息 -->
+        <div class="alert alert-info" role="alert" id="debugInfo" style="display: none;">
+            <strong>调试信息:</strong>
+            <div id="debugContent"></div>
+            <button class="btn btn-sm btn-outline-secondary float-end" onclick="toggleDebug()">切换调试</button>
+        </div>
+        
+        <div class="mb-3">
+            <button class="btn btn-sm btn-outline-info" onclick="showDebugInfo()">显示调试信息</button>
+            <button class="btn btn-sm btn-outline-warning" onclick="clearAllTokens()">清除所有Token</button>
+        </div>
+        
+        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" id="auth-tab" data-bs-toggle="tab" href="#auth" role="tab">认证管理</a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="user-tab" data-bs-toggle="tab" href="#user" role="tab">用户管理</a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="role-tab" data-bs-toggle="tab" href="#role" role="tab">角色管理</a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="permission-tab" data-bs-toggle="tab" href="#permission" role="tab">权限管理</a>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="myTabContent">
+            <!-- 认证管理 Tab -->
+            <div class="tab-pane fade show active" id="auth" role="tabpanel">
+                <h3>认证管理</h3>
+                
+                <!-- 注册 -->
+                <div class="card">
+                    <div class="card-header">用户注册</div>
+                    <div class="card-body">
+                        <form id="registerForm">
+                            <div class="mb-3">
+                                <label for="regUsername" class="form-label">用户名</label>
+                                <input type="text" class="form-control" id="regUsername" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="regEmail" class="form-label">邮箱</label>
+                                <input type="email" class="form-control" id="regEmail" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="regPassword" class="form-label">密码</label>
+                                <input type="password" class="form-control" id="regPassword" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">注册</button>
+                        </form>
+                        <div class="response mt-3" id="registerResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 登录 -->
+                <div class="card">
+                    <div class="card-header">用户登录</div>
+                    <div class="card-body">
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="loginEmail" class="form-label">邮箱</label>
+                                <input type="email" class="form-control" id="loginEmail" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="loginPassword" class="form-label">密码</label>
+                                <input type="password" class="form-control" id="loginPassword" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">登录</button>
+                        </form>
+                        <div class="response mt-3" id="loginResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- Token刷新 -->
+                <div class="card">
+                    <div class="card-header">刷新Token</div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" id="refreshToken">刷新Token</button>
+                        <div class="response mt-3" id="refreshResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- Token验证 -->
+                <div class="card">
+                    <div class="card-header">验证Token</div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" id="verifyToken">验证Token</button>
+                        <div class="response mt-3" id="verifyResponse"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 用户管理 Tab -->
+            <div class="tab-pane fade" id="user" role="tabpanel">
+                <h3>用户管理</h3>
+                
+                <!-- 获取用户列表 -->
+                <div class="card">
+                    <div class="card-header">获取用户列表</div>
+                    <div class="card-body">
+                        <form id="getUsersForm">
+                            <div class="mb-3">
+                                <label for="usersPage" class="form-label">页码</label>
+                                <input type="number" class="form-control" id="usersPage" value="1" min="1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="usersLimit" class="form-label">每页条数</label>
+                                <input type="number" class="form-control" id="usersLimit" value="10" min="1">
+                            </div>
+                            <button type="submit" class="btn btn-primary">获取用户列表</button>
+                        </form>
+                        <div class="response mt-3" id="getUsersResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 获取单个用户 -->
+                <div class="card">
+                    <div class="card-header">获取用户详情</div>
+                    <div class="card-body">
+                        <form id="getUserForm">
+                            <div class="mb-3">
+                                <label for="userId" class="form-label">用户ID</label>
+                                <input type="text" class="form-control" id="userId" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">获取用户</button>
+                        </form>
+                        <div class="response mt-3" id="getUserResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 更新用户 -->
+                <div class="card">
+                    <div class="card-header">更新用户</div>
+                    <div class="card-body">
+                        <form id="updateUserForm">
+                            <div class="mb-3">
+                                <label for="updateUserId" class="form-label">用户ID</label>
+                                <input type="text" class="form-control" id="updateUserId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="updateUsername" class="form-label">用户名</label>
+                                <input type="text" class="form-control" id="updateUsername">
+                            </div>
+                            <div class="mb-3">
+                                <label for="updateEmail" class="form-label">邮箱</label>
+                                <input type="email" class="form-control" id="updateEmail">
+                            </div>
+                            <button type="submit" class="btn btn-primary">更新用户</button>
+                        </form>
+                        <div class="response mt-3" id="updateUserResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 删除用户 -->
+                <div class="card">
+                    <div class="card-header">删除用户</div>
+                    <div class="card-body">
+                        <form id="deleteUserForm">
+                            <div class="mb-3">
+                                <label for="deleteUserId" class="form-label">用户ID</label>
+                                <input type="text" class="form-control" id="deleteUserId" required>
+                            </div>
+                            <button type="submit" class="btn btn-danger">删除用户</button>
+                        </form>
+                        <div class="response mt-3" id="deleteUserResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 分配角色 -->
+                <div class="card">
+                    <div class="card-header">分配角色</div>
+                    <div class="card-body">
+                        <form id="assignRoleForm">
+                            <div class="mb-3">
+                                <label for="roleUserId" class="form-label">用户ID</label>
+                                <input type="text" class="form-control" id="roleUserId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="roleId" class="form-label">角色ID</label>
+                                <input type="text" class="form-control" id="roleId" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">分配角色</button>
+                        </form>
+                        <div class="response mt-3" id="assignRoleResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 移除角色 -->
+                <div class="card">
+                    <div class="card-header">移除角色</div>
+                    <div class="card-body">
+                        <form id="removeRoleForm">
+                            <div class="mb-3">
+                                <label for="removeRoleUserId" class="form-label">用户ID</label>
+                                <input type="text" class="form-control" id="removeRoleUserId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="removeRoleId" class="form-label">角色ID</label>
+                                <input type="text" class="form-control" id="removeRoleId" required>
+                            </div>
+                            <button type="submit" class="btn btn-danger">移除角色</button>
+                        </form>
+                        <div class="response mt-3" id="removeRoleResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 获取用户权限 -->
+                <div class="card">
+                    <div class="card-header">获取用户权限</div>
+                    <div class="card-body">
+                        <form id="getUserPermissionsForm">
+                            <div class="mb-3">
+                                <label for="permUserId" class="form-label">用户ID</label>
+                                <input type="text" class="form-control" id="permUserId" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">获取权限</button>
+                        </form>
+                        <div class="response mt-3" id="getUserPermissionsResponse"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 角色管理 Tab -->
+            <div class="tab-pane fade" id="role" role="tabpanel">
+                <h3>角色管理</h3>
+                
+                <!-- 获取角色列表 -->
+                <div class="card">
+                    <div class="card-header">获取角色列表</div>
+                    <div class="card-body">
+                        <form id="getRolesForm">
+                            <div class="mb-3">
+                                <label for="rolesPage" class="form-label">页码</label>
+                                <input type="number" class="form-control" id="rolesPage" value="1" min="1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="rolesLimit" class="form-label">每页条数</label>
+                                <input type="number" class="form-control" id="rolesLimit" value="10" min="1">
+                            </div>
+                            <button type="submit" class="btn btn-primary">获取角色列表</button>
+                        </form>
+                        <div class="response mt-3" id="getRolesResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 创建角色 -->
+                <div class="card">
+                    <div class="card-header">创建角色</div>
+                    <div class="card-body">
+                        <form id="createRoleForm">
+                            <div class="mb-3">
+                                <label for="createRoleName" class="form-label">角色名称</label>
+                                <input type="text" class="form-control" id="createRoleName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="createRoleDesc" class="form-label">角色描述</label>
+                                <textarea class="form-control" id="createRoleDesc" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">创建角色</button>
+                        </form>
+                        <div class="response mt-3" id="createRoleResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 获取角色详情 -->
+                <div class="card">
+                    <div class="card-header">获取角色详情</div>
+                    <div class="card-body">
+                        <form id="getRoleForm">
+                            <div class="mb-3">
+                                <label for="getRoleId" class="form-label">角色ID</label>
+                                <input type="text" class="form-control" id="getRoleId" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">获取角色</button>
+                        </form>
+                        <div class="response mt-3" id="getRoleResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 更新角色 -->
+                <div class="card">
+                    <div class="card-header">更新角色</div>
+                    <div class="card-body">
+                        <form id="updateRoleForm">
+                            <div class="mb-3">
+                                <label for="updateRoleId" class="form-label">角色ID</label>
+                                <input type="text" class="form-control" id="updateRoleId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="updateRoleName" class="form-label">角色名称</label>
+                                <input type="text" class="form-control" id="updateRoleName">
+                            </div>
+                            <div class="mb-3">
+                                <label for="updateRoleDesc" class="form-label">角色描述</label>
+                                <textarea class="form-control" id="updateRoleDesc" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">更新角色</button>
+                        </form>
+                        <div class="response mt-3" id="updateRoleResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 删除角色 -->
+                <div class="card">
+                    <div class="card-header">删除角色</div>
+                    <div class="card-body">
+                        <form id="deleteRoleForm">
+                            <div class="mb-3">
+                                <label for="deleteRoleId" class="form-label">角色ID</label>
+                                <input type="text" class="form-control" id="deleteRoleId" required>
+                            </div>
+                            <button type="submit" class="btn btn-danger">删除角色</button>
+                        </form>
+                        <div class="response mt-3" id="deleteRoleResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 分配权限 -->
+                <div class="card">
+                    <div class="card-header">分配权限</div>
+                    <div class="card-body">
+                        <form id="assignPermissionForm">
+                            <div class="mb-3">
+                                <label for="permRoleId" class="form-label">角色ID</label>
+                                <input type="text" class="form-control" id="permRoleId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="permissionId" class="form-label">权限ID</label>
+                                <input type="text" class="form-control" id="permissionId" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">分配权限</button>
+                        </form>
+                        <div class="response mt-3" id="assignPermissionResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 移除权限 -->
+                <div class="card">
+                    <div class="card-header">移除权限</div>
+                    <div class="card-body">
+                        <form id="removePermissionForm">
+                            <div class="mb-3">
+                                <label for="removePermRoleId" class="form-label">角色ID</label>
+                                <input type="text" class="form-control" id="removePermRoleId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="removePermissionId" class="form-label">权限ID</label>
+                                <input type="text" class="form-control" id="removePermissionId" required>
+                            </div>
+                            <button type="submit" class="btn btn-danger">移除权限</button>
+                        </form>
+                        <div class="response mt-3" id="removePermissionResponse"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 权限管理 Tab -->
+            <div class="tab-pane fade" id="permission" role="tabpanel">
+                <h3>权限管理</h3>
+                
+                <!-- 获取权限列表 -->
+                <div class="card">
+                    <div class="card-header">获取权限列表</div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" id="getPermissions">获取权限列表</button>
+                        <div class="response mt-3" id="getPermissionsResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 创建权限 -->
+                <div class="card">
+                    <div class="card-header">创建权限</div>
+                    <div class="card-body">
+                        <form id="createPermissionForm">
+                            <div class="mb-3">
+                                <label for="createPermName" class="form-label">权限名称</label>
+                                <input type="text" class="form-control" id="createPermName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="createPermDesc" class="form-label">权限描述</label>
+                                <textarea class="form-control" id="createPermDesc" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="createPermResource" class="form-label">资源</label>
+                                <input type="text" class="form-control" id="createPermResource" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="createPermAction" class="form-label">操作</label>
+                                <input type="text" class="form-control" id="createPermAction" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">创建权限</button>
+                        </form>
+                        <div class="response mt-3" id="createPermissionResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 获取权限详情 -->
+                <div class="card">
+                    <div class="card-header">获取权限详情</div>
+                    <div class="card-body">
+                        <form id="getPermissionForm">
+                            <div class="mb-3">
+                                <label for="getPermId" class="form-label">权限ID</label>
+                                <input type="text" class="form-control" id="getPermId" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">获取权限</button>
+                        </form>
+                        <div class="response mt-3" id="getPermissionResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 更新权限 -->
+                <div class="card">
+                    <div class="card-header">更新权限</div>
+                    <div class="card-body">
+                        <form id="updatePermissionForm">
+                            <div class="mb-3">
+                                <label for="updatePermId" class="form-label">权限ID</label>
+                                <input type="text" class="form-control" id="updatePermId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="updatePermName" class="form-label">权限名称</label>
+                                <input type="text" class="form-control" id="updatePermName">
+                            </div>
+                            <div class="mb-3">
+                                <label for="updatePermDesc" class="form-label">权限描述</label>
+                                <textarea class="form-control" id="updatePermDesc" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="updatePermResource" class="form-label">资源</label>
+                                <input type="text" class="form-control" id="updatePermResource">
+                            </div>
+                            <div class="mb-3">
+                                <label for="updatePermAction" class="form-label">操作</label>
+                                <input type="text" class="form-control" id="updatePermAction">
+                            </div>
+                            <button type="submit" class="btn btn-primary">更新权限</button>
+                        </form>
+                        <div class="response mt-3" id="updatePermissionResponse"></div>
+                    </div>
+                </div>
+                
+                <!-- 删除权限 -->
+                <div class="card">
+                    <div class="card-header">删除权限</div>
+                    <div class="card-body">
+                        <form id="deletePermissionForm">
+                            <div class="mb-3">
+                                <label for="deletePermId" class="form-label">权限ID</label>
+                                <input type="text" class="form-control" id="deletePermId" required>
+                            </div>
+                            <button type="submit" class="btn btn-danger">删除权限</button>
+                        </form>
+                        <div class="response mt-3" id="deletePermissionResponse"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
