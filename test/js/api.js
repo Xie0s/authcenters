@@ -270,13 +270,28 @@ const authAPI = {
         }, false);
     },
     
-    // 登录
-    login: async (email, password) => {
-        const response = await apiRequest('/api/v1/auth/login', 'POST', {
-            email,
+    // 登录 - 支持用户名或邮箱
+    login: async (identifier, password, type = 'auto') => {
+        const loginData = {
             password,
-            type: 'email'  // 添加登录类型
-        }, false);
+            type
+        };
+
+        // 根据类型设置对应的字段
+        if (type === 'username') {
+            loginData.username = identifier;
+        } else if (type === 'email') {
+            loginData.email = identifier;
+        } else if (type === 'auto') {
+            // 自动识别：如果包含@符号，认为是邮箱，否则认为是用户名
+            if (identifier.includes('@')) {
+                loginData.email = identifier;
+            } else {
+                loginData.username = identifier;
+            }
+        }
+
+        const response = await apiRequest('/api/v1/auth/login', 'POST', loginData, false);
         
         console.log('登录响应:', response);
         

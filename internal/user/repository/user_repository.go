@@ -30,6 +30,9 @@ type UserRepository interface {
 	// GetByPhone 通过手机号获取用户
 	GetByPhone(phone string) (*models.User, error)
 
+	// GetByUsernameOrEmail 通过用户名或邮箱获取用户
+	GetByUsernameOrEmail(identifier string) (*models.User, error)
+
 	// List 获取用户列表
 	List(page, pageSize int) ([]*models.User, int64, error)
 
@@ -161,6 +164,31 @@ func (r *userRepository) GetByPhone(phone string) (*models.User, error) {
 
 	var user models.User
 	err := r.collection.FindOne(ctx, bson.M{"phone": phone}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+// GetByUsernameOrEmail 通过用户名或邮箱获取用户
+func (r *userRepository) GetByUsernameOrEmail(identifier string) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var user models.User
+	// 使用 $or 操作符同时查询用户名和邮箱
+	filter := bson.M{
+		"$or": []bson.M{
+			{"username": identifier},
+			{"email": identifier},
+		},
+	}
+
+	err := r.collection.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, errors.New("user not found")

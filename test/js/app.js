@@ -47,10 +47,11 @@ function initAuthHandlers() {
     // 登录表单
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('loginEmail').value;
+        const identifier = document.getElementById('loginIdentifier').value;
         const password = document.getElementById('loginPassword').value;
-        
-        const response = await authAPI.login(email, password);
+        const type = document.getElementById('loginType').value;
+
+        const response = await authAPI.login(identifier, password, type);
         document.getElementById('loginResponse').textContent = formatJSON(response);
     });
     

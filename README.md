@@ -2,6 +2,93 @@
 
 基于Go语言和MongoDB的企业级认证授权中心，采用RBAC(Role-Based Access Control)模型。
 
+## 🌟 新功能特性
+
+- ✅ **注册时必须提供用户名** - 用户名现在是必填字段
+- ✅ **支持用户名登录** - 可以使用用户名+密码登录
+- ✅ **支持邮箱登录** - 可以使用邮箱+密码登录
+- ✅ **自动识别登录** - 系统自动判断输入的是用户名还是邮箱
+- ✅ **完整的前端测试界面** - 可视化测试所有功能
+
+## 🚀 快速开始
+
+### 方法一：一键部署（推荐）
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/Xie0s/authcenters.git
+cd authcenters
+
+# 2. 运行一键部署脚本
+./deploy-local.sh
+
+# 3. 访问测试页面
+# 浏览器打开: http://localhost:8080/test/
+```
+
+### 方法二：手动部署
+
+```bash
+# 1. 启动 MongoDB
+docker run -d --name mongodb -p 27017:27017 mongo:latest
+
+# 2. 初始化数据库
+cd scripts
+npm install
+node run_init_new.js
+cd ..
+
+# 3. 启动服务
+go mod tidy
+go run cmd/server/main.go
+```
+
+## 📝 API 使用示例
+
+### 注册用户（用户名必填）
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "password123"
+  }'
+```
+
+### 用户名登录
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "username": "testuser",
+    "password": "password123",
+    "type": "username"
+  }'
+```
+
+### 邮箱登录
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email": "test@example.com",
+    "password": "password123",
+    "type": "email"
+  }'
+```
+
+### 自动识别登录
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "username": "testuser",
+    "password": "password123",
+    "type": "auto"
+  }'
+```
+
 ## 项目结构
 
 ```

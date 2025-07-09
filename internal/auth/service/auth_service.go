@@ -43,6 +43,7 @@ type RegisterRequest struct {
 
 // LoginRequest 登录请求结构
 type LoginRequest struct {
+	Username string `json:"username,omitempty"` // 用户名
 	Phone    string `json:"phone,omitempty"`
 	Email    string `json:"email,omitempty"`
 	Password string `json:"password,omitempty"`
@@ -94,6 +95,11 @@ func NewAuthService(
 
 // Register 用户注册
 func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*models.User, error) {
+	// 验证用户名是否为空
+	if req.Username == "" {
+		return nil, errors.New("用户名不能为空")
+	}
+
 	// 检查用户名是否已存在
 	existingUser, _ := s.userRepo.GetByUsername(req.Username)
 	if existingUser != nil {
@@ -171,11 +177,42 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*TokenData,
 		}
 		// TODO: 验证短信验证码
 		user, err = s.userRepo.GetByPhone(req.Phone)
+	case "username":
+		if req.Username == "" || req.Password == "" {
+			return nil, errors.New("用户名和密码不能为空")
+		}
+		user, err = s.userRepo.GetByUsername(req.Username)
+		if err == nil && user != nil {
+			if !utils.CheckPassword(req.Password, user.PasswordHash) {
+				return nil, errors.New("密码错误")
+			}
+		}
 	case "email", "": // 空字符串时默认为邮箱登录
 		if req.Email == "" || req.Password == "" {
 			return nil, errors.New("邮箱和密码不能为空")
 		}
 		user, err = s.userRepo.GetByEmail(req.Email)
+		if err == nil && user != nil {
+			if !utils.CheckPassword(req.Password, user.PasswordHash) {
+				return nil, errors.New("密码错误")
+			}
+		}
+	case "auto": // 自动识别用户名或邮箱登录
+		if req.Password == "" {
+			return nil, errors.New("密码不能为空")
+		}
+
+		var identifier string
+		if req.Username != "" {
+			identifier = req.Username
+		} else if req.Email != "" {
+			identifier = req.Email
+		} else {
+			return nil, errors.New("用户名或邮箱不能为空")
+		}
+
+		// 使用新的方法同时查询用户名和邮箱
+		user, err = s.userRepo.GetByUsernameOrEmail(identifier)
 		if err == nil && user != nil {
 			if !utils.CheckPassword(req.Password, user.PasswordHash) {
 				return nil, errors.New("密码错误")

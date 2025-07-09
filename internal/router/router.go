@@ -170,5 +170,8 @@ func Setup(db *mongo.Database, cfg *config.Config) *gin.Engine {
 		}
 	}
 
+	// 静态文件服务 - 用于测试页面
+	r.Static("/test", "./test")
+
 	return r
 }
