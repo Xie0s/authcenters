@@ -97,7 +97,7 @@ func AuditMiddleware() gin.HandlerFunc {
 		}
 
 		// 输出审计日志
-		logger.Info("audit", auditLog)
+		logger.WithFields(auditLog).Info("audit")
 	}
 }
 
@@ -158,7 +158,7 @@ func SecurityEventMiddleware() gin.HandlerFunc {
 				securityEvent["request_id"] = requestID
 			}
 
-			logger.Warn("security_event", securityEvent)
+			logger.WithFields(securityEvent).Warn("security_event")
 		}
 
 		// 记录权限不足
@@ -179,7 +179,7 @@ func SecurityEventMiddleware() gin.HandlerFunc {
 				securityEvent["request_id"] = requestID
 			}
 
-			logger.Warn("security_event", securityEvent)
+			logger.WithFields(securityEvent).Warn("security_event")
 		}
 
 		// 记录频率限制
@@ -197,7 +197,7 @@ func SecurityEventMiddleware() gin.HandlerFunc {
 				securityEvent["request_id"] = requestID
 			}
 
-			logger.Warn("security_event", securityEvent)
+			logger.WithFields(securityEvent).Warn("security_event")
 		}
 	}
 }

@@ -52,7 +52,12 @@
         <div class="mb-3">
             <button class="btn btn-sm btn-outline-info" onclick="showDebugInfo()">显示调试信息</button>
             <button class="btn btn-sm btn-outline-warning" onclick="clearAllTokens()">清除所有Token</button>
+            <button class="btn btn-sm btn-outline-primary" onclick="performSystemHealthCheck()">系统健康检查</button>
+            <button class="btn btn-sm btn-outline-success" onclick="runAuthenticationTests()">运行认证测试</button>
         </div>
+        
+        <!-- 系统健康检查结果显示区域 -->
+        <div id="healthCheckResults" style="display: none;"></div>
         
         <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
             <li class="nav-item" role="presentation">
