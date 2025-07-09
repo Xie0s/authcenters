@@ -101,6 +101,29 @@ function showDebugInfo() {
     console.log('sessionStorage Refresh Token:', sessionRefreshToken ? '存在 (长度: ' + sessionRefreshToken.length + ')' : '不存在');
     console.log('sessionStorage User ID:', sessionUserId || '不存在');
     
+    // Token解析
+    let tokenInfo = '无有效Token';
+    if (accessToken) {
+        try {
+            const tokenParts = accessToken.split('.');
+            if (tokenParts.length === 3) {
+                const payload = JSON.parse(atob(tokenParts[1]));
+                tokenInfo = `
+                    <strong>Token载荷信息:</strong><br>
+                    用户ID: ${payload.user_id || '未知'}<br>
+                    用户名: ${payload.username || '未知'}<br>
+                    角色: ${payload.roles ? payload.roles.join(', ') : '无'}<br>
+                    权限数: ${payload.permissions ? payload.permissions.length : 0}<br>
+                    发行时间: ${payload.iat ? new Date(payload.iat * 1000).toLocaleString() : '未知'}<br>
+                    过期时间: ${payload.exp ? new Date(payload.exp * 1000).toLocaleString() : '未知'}<br>
+                    是否过期: ${payload.exp ? (Date.now() / 1000 > payload.exp ? '是' : '否') : '未知'}
+                `;
+            }
+        } catch (e) {
+            tokenInfo = '无法解析Token';
+        }
+    }
+    
     debugContent.innerHTML = `
         <h5>localStorage 存储:</h5>
         <div><strong>Access Token:</strong> ${accessToken ? '存在 (长度: ' + accessToken.length + ')' : '不存在'}</div>
@@ -110,6 +133,12 @@ function showDebugInfo() {
         <div><strong>Access Token:</strong> ${sessionAccessToken ? '存在 (长度: ' + sessionAccessToken.length + ')' : '不存在'}</div>
         <div><strong>Refresh Token:</strong> ${sessionRefreshToken ? '存在 (长度: ' + sessionRefreshToken.length + ')' : '不存在'}</div>
         <div><strong>User ID:</strong> ${sessionUserId || '不存在'}</div>
+        <hr>
+        ${tokenInfo}
+        <hr>
+        <div><strong>浏览器支持:</strong></div>
+        <div>localStorage: ${typeof(Storage) !== "undefined" && localStorage ? '支持' : '不支持'}</div>
+        <div>sessionStorage: ${typeof(Storage) !== "undefined" && sessionStorage ? '支持' : '不支持'}</div>
         <div><strong>当前时间:</strong> ${new Date().toLocaleString()}</div>
     `;
     

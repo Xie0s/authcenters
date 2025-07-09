@@ -736,8 +736,7 @@ function formatJSON(json) {
 
 // 初始化时检查Token
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('页面加载完成，开始检查Token状态...');
-    console.log('=== DOMContentLoaded: 当前Token存储状态 ===');
+    console.log('=== 页面加载，开始Token检查 ===');
     
     try {
         // 检查localStorage状态
@@ -766,4 +765,369 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('没有access_token，跳过Token检查');
         checkToken(); // 只更新UI状态
     }
+    
+    // 执行系统健康检查
+    await performSystemHealthCheck();
 });
+
+// 执行系统健康检查
+async function performSystemHealthCheck() {
+    console.log('=== 开始系统健康检查 ===');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/health/detailed`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        
+        const healthData = await response.json();
+        console.log('系统健康检查结果:', healthData);
+        
+        // 显示健康检查结果
+        displayHealthCheckResults(healthData);
+        
+        return healthData;
+    } catch (error) {
+        console.error('系统健康检查失败:', error);
+        displayHealthCheckError(error);
+        return null;
+    }
+}
+
+// 显示健康检查结果
+function displayHealthCheckResults(healthData) {
+    // 显示健康检查结果区域
+    const healthDisplay = document.getElementById('healthCheckResults');
+    if (healthDisplay) {
+        healthDisplay.style.display = 'block';
+        
+        if (healthData && healthData.data) {
+            const { status, checks, summary } = healthData.data;
+            
+            let healthHTML = `
+                <div class="card">
+                    <div class="card-header bg-${status === 'healthy' ? 'success' : 'danger'} text-white">
+                        <h5 class="mb-0">系统健康检查 - ${status === 'healthy' ? '健康' : '异常'}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="alert alert-info">
+                                    <strong>检查项总数:</strong> ${summary.total_checks}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-success">
+                                    <strong>通过项:</strong> ${summary.passed_checks}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-danger">
+                                    <strong>失败项:</strong> ${summary.failed_checks}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion" id="healthChecksAccordion">
+            `;
+            
+            Object.entries(checks).forEach(([checkName, result], index) => {
+                const statusClass = result.status === 'passed' ? 'success' : 'danger';
+                const statusText = result.status === 'passed' ? '通过' : '失败';
+                healthHTML += `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading${index}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}">
+                                <span class="badge bg-${statusClass} me-2">${statusText}</span>
+                                <strong>${checkName}:</strong> ${result.message}
+                            </button>
+                        </h2>
+                        <div id="collapse${index}" class="accordion-collapse collapse" data-bs-parent="#healthChecksAccordion">
+                            <div class="accordion-body">
+                                <p><strong>状态:</strong> <span class="badge bg-${statusClass}">${statusText}</span></p>
+                                <p><strong>耗时:</strong> ${result.duration}</p>
+                                <p><strong>检查时间:</strong> ${result.last_checked}</p>
+                                ${result.details ? `<p><strong>详细信息:</strong></p><pre class="bg-light p-2">${JSON.stringify(result.details, null, 2)}</pre>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            healthHTML += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            healthDisplay.innerHTML = healthHTML;
+        }
+    }
+}
+
+// 显示健康检查错误
+function displayHealthCheckError(error) {
+    const healthDisplay = document.getElementById('healthCheckResults');
+    if (healthDisplay) {
+        healthDisplay.style.display = 'block';
+        healthDisplay.innerHTML = `
+            <div class="alert alert-danger">
+                <h5>健康检查失败</h5>
+                <p>错误信息: ${error.message}</p>
+                <p>这可能意味着后端服务未启动或健康检查端点不可用。</p>
+            </div>
+        `;
+    }
+}
+
+// 运行认证系统测试
+async function runAuthenticationTests() {
+    console.log('=== 开始认证系统测试 ===');
+    
+    const testResults = {
+        passed: 0,
+        failed: 0,
+        tests: []
+    };
+    
+    // 清除现有的tokens
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_id');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('user_id');
+    
+    // 测试1: 基础健康检查
+    await runTest(testResults, '基础健康检查', async () => {
+        const response = await fetch(`${API_BASE_URL}/health`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (response.ok && data.status === 'ok') {
+            return { success: true, message: '健康检查通过' };
+        } else {
+            return { success: false, message: '健康检查失败' };
+        }
+    });
+    
+    // 测试2: Token验证（无Token）
+    await runTest(testResults, 'Token验证（无Token）', async () => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auth/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: '' }),
+            credentials: 'include'
+        });
+        if (response.status === 400 || response.status === 401) {
+            return { success: true, message: '正确拒绝无效Token' };
+        } else {
+            return { success: false, message: '未正确处理无效Token' };
+        }
+    });
+    
+    // 测试3: 用户注册
+    const testEmail = `test_${Date.now()}@example.com`;
+    let registrationSuccess = false;
+    await runTest(testResults, '用户注册', async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: `testuser_${Date.now()}`,
+                    email: testEmail,
+                    password: 'testpassword123'
+                }),
+                credentials: 'include'
+            });
+            const data = await response.json();
+            if (response.ok) {
+                registrationSuccess = true;
+                return { success: true, message: '用户注册成功' };
+            } else {
+                return { success: false, message: `注册失败: ${data.message || '未知错误'}` };
+            }
+        } catch (error) {
+            return { success: false, message: `注册异常: ${error.message}` };
+        }
+    });
+    
+    // 测试4: 用户登录
+    let loginSuccess = false;
+    if (registrationSuccess) {
+        await runTest(testResults, '用户登录', async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: testEmail,
+                        password: 'testpassword123',
+                        type: 'email'
+                    }),
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (response.ok && data.data && data.data.access_token) {
+                    // 保存token用于后续测试
+                    localStorage.setItem('access_token', data.data.access_token);
+                    localStorage.setItem('refresh_token', data.data.refresh_token);
+                    localStorage.setItem('user_id', data.data.user_id);
+                    loginSuccess = true;
+                    return { success: true, message: '用户登录成功' };
+                } else {
+                    return { success: false, message: `登录失败: ${data.message || '未知错误'}` };
+                }
+            } catch (error) {
+                return { success: false, message: `登录异常: ${error.message}` };
+            }
+        });
+    }
+    
+    // 测试5: Token验证（有效Token）
+    if (loginSuccess) {
+        await runTest(testResults, 'Token验证（有效Token）', async () => {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_BASE_URL}/api/v1/auth/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token }),
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (response.ok && data.data && data.data.valid) {
+                    return { success: true, message: 'Token验证成功' };
+                } else {
+                    return { success: false, message: `Token验证失败: ${data.message || '未知错误'}` };
+                }
+            } catch (error) {
+                return { success: false, message: `Token验证异常: ${error.message}` };
+            }
+        });
+        
+        // 测试6: Token刷新
+        await runTest(testResults, 'Token刷新', async () => {
+            try {
+                const refreshToken = localStorage.getItem('refresh_token');
+                const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (response.ok && data.data && data.data.access_token) {
+                    return { success: true, message: 'Token刷新成功' };
+                } else {
+                    return { success: false, message: `Token刷新失败: ${data.message || '未知错误'}` };
+                }
+            } catch (error) {
+                return { success: false, message: `Token刷新异常: ${error.message}` };
+            }
+        });
+    }
+    
+    // 显示测试结果
+    displayAuthTestResults(testResults);
+}
+
+// 运行单个测试
+async function runTest(testResults, testName, testFunc) {
+    console.log(`运行测试: ${testName}`);
+    try {
+        const result = await testFunc();
+        if (result.success) {
+            testResults.passed++;
+            testResults.tests.push({
+                name: testName,
+                status: 'passed',
+                message: result.message
+            });
+            console.log(`✓ ${testName}: ${result.message}`);
+        } else {
+            testResults.failed++;
+            testResults.tests.push({
+                name: testName,
+                status: 'failed',
+                message: result.message
+            });
+            console.log(`✗ ${testName}: ${result.message}`);
+        }
+    } catch (error) {
+        testResults.failed++;
+        testResults.tests.push({
+            name: testName,
+            status: 'error',
+            message: `测试异常: ${error.message}`
+        });
+        console.log(`✗ ${testName}: 测试异常: ${error.message}`);
+    }
+}
+
+// 显示认证测试结果
+function displayAuthTestResults(testResults) {
+    const healthDisplay = document.getElementById('healthCheckResults');
+    if (healthDisplay) {
+        healthDisplay.style.display = 'block';
+        
+        const overallStatus = testResults.failed === 0 ? 'success' : 'danger';
+        let testHTML = `
+            <div class="card">
+                <div class="card-header bg-${overallStatus} text-white">
+                    <h5 class="mb-0">认证系统测试结果</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="alert alert-info">
+                                <strong>总测试数:</strong> ${testResults.tests.length}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-success">
+                                <strong>通过:</strong> ${testResults.passed}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-danger">
+                                <strong>失败:</strong> ${testResults.failed}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion" id="testResultsAccordion">
+        `;
+        
+        testResults.tests.forEach((test, index) => {
+            const statusClass = test.status === 'passed' ? 'success' : 'danger';
+            const statusText = test.status === 'passed' ? '通过' : '失败';
+            testHTML += `
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="testHeading${index}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#testCollapse${index}">
+                            <span class="badge bg-${statusClass} me-2">${statusText}</span>
+                            <strong>${test.name}</strong>
+                        </button>
+                    </h2>
+                    <div id="testCollapse${index}" class="accordion-collapse collapse" data-bs-parent="#testResultsAccordion">
+                        <div class="accordion-body">
+                            <p><strong>状态:</strong> <span class="badge bg-${statusClass}">${statusText}</span></p>
+                            <p><strong>结果:</strong> ${test.message}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        testHTML += `
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        healthDisplay.innerHTML = testHTML;
+    }
+}

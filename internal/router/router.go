@@ -16,6 +16,7 @@ import (
 	categoryRepo "authcenter/internal/category/repository"
 	categoryService "authcenter/internal/category/service"
 	"authcenter/internal/config"
+	healthHandler "authcenter/internal/health/handler"
 	"authcenter/internal/middleware"
 	permissionHandler "authcenter/internal/permission/handler"
 	roleHandler "authcenter/internal/role/handler"
@@ -77,11 +78,15 @@ func Setup(db *mongo.Database, cfg *config.Config) *gin.Engine {
 	categoryHdl := categoryHandler.NewCategoryHandler(categorySvc)
 	tagHdl := tagHandler.NewTagHandler(tagSvc)
 	aiHdl := aiHandler.NewAIHandler(aiSvc)
+	healthHdl := healthHandler.NewHealthHandler(db, cfg)
 
-	// 健康检查
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok", "service": "AuthCenter"})
-	})
+	// 健康检查路由
+	health := r.Group("/health")
+	{
+		health.GET("", healthHdl.BasicHealth)
+		health.GET("/basic", healthHdl.BasicHealth)
+		health.GET("/detailed", healthHdl.DetailedHealth)
+	}
 
 	// API路由组
 	api := r.Group("/api/v1")
